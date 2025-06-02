@@ -21,7 +21,8 @@ import sys
 if os.path.exists(Path('./datasets/crowdsignals/csv-participant-one/')):
     DATASET_PATH = Path('./datasets/crowdsignals/csv-participant-one/')
 else:
-    DATASET_PATH = Path('./local/data/mmr497/datasets/crowdsignals/csv-participant-one/')
+    DATASET_PATH = Path('/local/data/mmr497/datasets/crowdsignals/csv-participant-one/')
+
 RESULT_PATH = Path('./intermediate_datafiles/')
 RESULT_FNAME = 'chapter2_result.csv'
 
