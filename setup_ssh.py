@@ -129,6 +129,13 @@ def setup_easy_connect():
     print(f"{cluster}.compute.vu.nl")
             
 def write_config(path, mode):
+    if location == 'u':
+        with open(path, mode) as f:
+            f.write(f'# Target host\n')
+            f.write(f'Host {hostname}\n')
+            f.write(f'    User {vunetid}\n')
+        return
+
     with open(path, mode) as f:
         f.write(f'# Jump host configuration for ssh.data.vu.nl\n')
         f.write(f'Host ssh.data.vu.nl\n')
