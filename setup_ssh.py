@@ -126,14 +126,13 @@ def setup_easy_connect():
 
     print("Config file setup successful!")
     print("You can now connect to the cluster using")
-    print(f"{cluster}.compute.vu.nl")
+    if location == 'u':
+        print(hostname)
+    else:
+        print(f"{cluster}.compute.vu.nl")
             
 def write_config(path, mode):
     if location == 'u':
-        with open(path, mode) as f:
-            f.write(f'# Target host\n')
-            f.write(f'Host {hostname}\n')
-            f.write(f'    User {vunetid}\n')
         return
 
     with open(path, mode) as f:
