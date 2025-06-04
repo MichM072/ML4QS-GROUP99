@@ -3,8 +3,19 @@ import scipy
 import copy
 import math
 import numpy as np
+import sys
 
 # Not a class, just a bunch of useful functions.
+
+# Custom function
+def check_display_server():
+    try:
+        import tkinter
+        tkinter.Tk().destroy()
+        return "TkAgg"
+    except:
+        print("No display server found. Using non-interactive Agg backend.")
+        return "Agg"
 
 def get_chapter(module_path):
     return re.search('_ch._', 'crowdsignals_ch3_outliers.py').group(0).strip('_')
