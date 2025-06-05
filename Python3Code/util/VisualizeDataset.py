@@ -1,5 +1,4 @@
 from .util import get_chapter
-from .util import check_display_server
 
 import matplotlib.colors as cl
 import matplotlib.pyplot as plt
@@ -19,7 +18,7 @@ import sys
 from pathlib import Path
 import dateutil
 import matplotlib as mpl
-mpl.use(check_display_server())
+mpl.use("agg")
 
 class VisualizeDataset:
 
