@@ -76,17 +76,17 @@ class PhyboxDatasetLoader:
     def create_dataset(self, experiment_path, granularities=None, overwrite=True):
 
         if granularities is None:
-            granularities = [6000, 250]
+            granularities = [600, 250]
 
         DATASET_PATH = Path(experiment_path)
 
         experiment_name = experiment_path.split('/')[-1].strip()
         RESULT_PATH = Path('./intermediate_datafiles/')
-        RESULT_FNAME = f'{experiment_name}_results.csv'
+        RESULT_FNAME = f'{experiment_name}_results.parquet'
 
         if not overwrite and os.path.exists(RESULT_PATH / RESULT_FNAME):
-            print(f"Intermediate results file {RESULT_FNAME} already exists. Overwrite is set to False. Skipping this experiment and using available csv.")
-            dataset = pd.read_csv(RESULT_PATH / RESULT_FNAME, index_col=0)
+            print(f"Intermediate results file {RESULT_FNAME} already exists. Overwrite is set to False. Skipping this experiment and using available parquet.")
+            dataset = pd.read_parquet(RESULT_PATH / RESULT_FNAME, index_col=0)
             return dataset
 
         # Set a granularity (the discrete step size of our time series data). We'll use a course-grained granularity of one
@@ -153,7 +153,7 @@ class PhyboxDatasetLoader:
         util.print_latex_table_statistics_two_datasets(datasets[0], datasets[1])
 
         # Finally, store the last dataset we generated (250 ms).
-        dataset.to_csv(RESULT_PATH / RESULT_FNAME)
+        dataset.to_parquet(RESULT_PATH / RESULT_FNAME, allow_truncated_timestamps=True)
 
         # Lastly, print a statement to know the code went through
 
