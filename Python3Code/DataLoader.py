@@ -109,6 +109,7 @@ class PhyboxDatasetLoader:
 
             if start_times:
                 print(f'Processing {experiment.name}')
+                # TODO: end times are not correct for missing pause.
                 latest_unix_timestamp = 0
                 for csv in (x for x in experiment.rglob('*.csv') if 'meta' not in str(x.parent)):
                     df = pd.read_csv(csv, delimiter=',')
@@ -238,7 +239,7 @@ class PhyboxDatasetLoader:
         self.load_phybox_data()
         print("Done loading phybox data.")
         print("Creating datasets...")
-        for experiment in glob.glob(f'/local/data/{self.student}/datasets/{self.exp_dir}/*'):
+        for experiment in glob.glob(f'{self.dataset_path}/*'):
             if os.path.isdir(experiment):
                 print(f'Processing {experiment}')
                 intermed_df = self.create_dataset(experiment, granularities, overwrite=overwrite)
