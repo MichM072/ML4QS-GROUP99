@@ -1,7 +1,8 @@
+from Chapter3.OutlierDetection import DistanceBasedOutlierDetection
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
-from Chapter3.OutlierDetection import DistanceBasedOutlierDetection
+
 
 def sort_datasets(vehicles, csv_files, folder='intermediate_datafiles'):
     data_by_vehicle = {vehicle: [] for vehicle in vehicles}
@@ -96,19 +97,25 @@ for vehicle, df in raw_data.items():
 for vehicle, df in concat_data.items():
     print(f"Processing {vehicle} data...")
 
+    # Get the dmin and fmin values for the current vehicle
     vehicle_dmin = vehicle_params[vehicle]['dmin']
     vehicle_fmin = vehicle_params[vehicle]['fmin']
 
+    # Apply the outlier detection for each sensor type
     df = outlier_detector.simple_distance_based(df, cols=cols_to_check_acc, d_function=d_function, dmin=vehicle_dmin, fmin=vehicle_fmin)
     df = outlier_detector.simple_distance_based(df, cols=cols_to_check_lin_acc, d_function=d_function, dmin=vehicle_dmin, fmin=vehicle_fmin)
     df = outlier_detector.simple_distance_based(df, cols=cols_to_check_gyr, d_function=d_function, dmin=vehicle_dmin, fmin=vehicle_fmin)
     df = outlier_detector.simple_distance_based(df, cols=cols_to_check_mag, d_function=d_function, dmin=vehicle_dmin, fmin=vehicle_fmin)
 
-    df_filtered = df[df['simple_dist_outlier'] == False] 
+    # Replace the outlier values with NaN
+    for col in cols_to_check_acc + cols_to_check_lin_acc + cols_to_check_gyr + cols_to_check_mag:
+        # Set outlier values to NaN in the selected columns
+        df.loc[df['simple_dist_outlier'] == True, col] = float('nan')
 
-##################################################
-##################################################
+    # Filter out the rows where the outlier flag is False (i.e., non-outliers remain)
+    df_filtered = df  # Now df contains NaNs instead of outliers
 
+    # Save the filtered data
     output_file = os.path.join(output_folder, f"{vehicle}_filtered.csv")
     df_filtered.to_csv(output_file)
     print(f"Saved filtered {vehicle} data to {output_file}")
