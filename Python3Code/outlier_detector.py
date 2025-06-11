@@ -13,6 +13,7 @@ class OutlierDetector:
         self.outlier_detector = None
         self.intermediate_dataset = intermediate_dataset
         self.fitted_data = None
+        self.fitted_cols = []
 
     @staticmethod
     def select_detector(outlier_type='chauvenet'):
@@ -56,7 +57,7 @@ class OutlierDetector:
 
             # Apply Chauvenet criterion
             df = self.outlier_detector.chauvenet(df, col, C=C)
-            df.loc[df[col + '_outlier'] == True, col] = float('nan')
+            self.fitted_cols.extend(col)
 
         self.fitted_data = df
 
@@ -75,9 +76,19 @@ class OutlierDetector:
             raise NotImplemented(f"Unknown outlier detector type: {outlier_detector}")
 
 
-    def transform(self):
-        return self.fitted_data
+    def transform(self, outlier_behavior = 'nan'):
+        df = self.fitted_data.copy()
+        if outlier_behavior == 'nan':
+            for col in self.fitted_cols:
+                df.loc[df[col + '_outlier'] == True, col] = float('nan')
+        elif outlier_behavior == 'drop':
+            # raise NotImplemented(f"Dropping outliers not yet implemented.")
+            pass
+        else:
+            raise ValueError(f"Unknown outlier behavior: {outlier_behavior}")
 
-    def fit_transform(self, outlier_detector = 'chauvenet', outlier_params = None, **kwargs):
+        return df
+
+    def fit_transform(self, outlier_detector = 'chauvenet', outlier_params = None, outlier_behaviour='nan', **kwargs):
         self.fit(outlier_detector, outlier_params, **kwargs)
-        return self.fitted_data
+        return self.transform(outlier_behaviour)

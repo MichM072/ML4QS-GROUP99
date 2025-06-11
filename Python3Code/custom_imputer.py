@@ -38,6 +38,7 @@ class CustomImputer:
                     if self.verbose:
                         print(f"Imputing {col} for instance {instance}...")
                         print(imputed_data.loc[instance_mask, col].isna().sum() / len(imputed_data.loc[instance_mask, col]))
+                    # noinspection PyArgumentList
                     imputed_data[instance_mask] = self.imputer(
                         dataset=imputed_data[instance_mask].copy(),
                         col=col
