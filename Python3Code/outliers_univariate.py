@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from Chapter3.OutlierDetection import DistributionBasedOutlierDetection
 
+
 def sort_datasets(vehicles, csv_files, folder='intermediate_datafiles'):
     data_by_vehicle = {vehicle: [] for vehicle in vehicles}
     for file in csv_files:
