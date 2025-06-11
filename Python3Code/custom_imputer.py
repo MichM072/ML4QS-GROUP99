@@ -3,10 +3,10 @@ import numpy as np
 import Chapter3.ImputationMissingValues as MisVal
 
 class CustomImputer:
-    def __init__(self, imputer='interpolation', verbose=False):
+    def __init__(self, imputer='interpolation'):
         self.imputer = self.select_imputer(imputer)
         self.imputed_data = None
-        self.verbose = verbose
+        self.verbose = None
 
     @staticmethod
     def select_imputer(imputer):
@@ -18,9 +18,12 @@ class CustomImputer:
                            }
         return imputer_mapping[imputer]
 
-    def fit(self, dataframe):
-        cols_to_impute = [col for col in dataframe.columns if
-                          col not in ['id', 'timestamp'] and 'label' not in col and 'outlier' not in col]
+    def fit(self, dataframe, cols=None, verbose=False):
+        self.verbose = verbose
+
+        if cols is None:
+            cols_to_impute = [col for col in dataframe.columns if
+                            col not in ['id', 'timestamp'] and 'label' not in col and 'outlier' not in col]
 
         imputed_data = dataframe.copy()
 
@@ -46,6 +49,6 @@ class CustomImputer:
             raise ValueError("No imputed data available. Please run fit() first.")
         return self.imputed_data
 
-    def fit_transform(self, dataframe):
-        self.fit(dataframe)
+    def fit_transform(self, dataframe, cols=None, verbose=False):
+        self.fit(dataframe, cols, verbose)
         return self.transform()
