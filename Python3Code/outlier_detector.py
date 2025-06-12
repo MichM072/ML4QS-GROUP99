@@ -13,7 +13,7 @@ class OutlierDetector:
         self.outlier_detector = None
         self.intermediate_dataset = intermediate_dataset
         self.fitted_data = None
-        self.fitted_cols = []
+        self.fitted_cols = set()
 
     @staticmethod
     def select_detector(outlier_type='chauvenet'):
@@ -57,7 +57,7 @@ class OutlierDetector:
 
             # Apply Chauvenet criterion
             df = self.outlier_detector.chauvenet(df, col, C=C)
-            self.fitted_cols.extend(col)
+            self.fitted_cols.add(col)
 
         self.fitted_data = df
 
