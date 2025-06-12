@@ -3,6 +3,7 @@ import scipy
 import copy
 import math
 import numpy as np
+import pandas as pd
 import sys
 
 # Not a class, just a bunch of useful functions.
@@ -16,6 +17,42 @@ def check_display_server():
     except:
         print("No display server found. Using non-interactive Agg backend.")
         return "Agg"
+
+def read_parquet(path):
+    df = pd.read_parquet(path)
+    df.set_index('timestamp', inplace=True)
+    return df
+
+def write_parquet(df, path):
+    df.reset_index(inplace=True)
+    df.rename(columns={'index': 'timestamp'}, inplace=True)
+    df.to_parquet(path, version='2.6', allow_truncated_timestamps=True)
+    print('Successfully written to parquet file at ', path, '\n')
+
+def ignore_actual_time(dataset):
+    df = dataset.copy()
+
+    if isinstance(df.index, pd.DatetimeIndex):
+        df.reset_index(inplace=True)
+        df.rename(columns={'index': 'timestamp'}, inplace=True)
+
+    def time_gap_cols(group):
+        time_series = pd.to_datetime(group['timestamp'])
+        time_gap_dfs = time_series.diff().fillna(pd.Timedelta(0))
+        return time_gap_dfs
+
+    for instance in df.id.unique():
+        df.loc[df.id == instance, 'time_diff'] = time_gap_cols(df[df.id == instance])
+
+    df['shifted_time'] = df['time_diff'].cumsum()
+
+    start_time = pd.Timestamp('1970-1-1 00:00:00')
+
+    df['timestamp'] = df['shifted_time'] + start_time
+
+    df.set_index('timestamp', inplace=True)
+
+    return df
 
 def get_chapter(module_path):
     return re.search('_ch._', 'crowdsignals_ch3_outliers.py').group(0).strip('_')

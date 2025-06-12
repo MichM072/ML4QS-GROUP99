@@ -6,6 +6,11 @@ from Chapter3.OutlierDetection import DistributionBasedOutlierDetection, Distanc
 folder = 'intermediate_datafiles'
 output_folder = 'outlier_data'
 vehicles = ['train', 'bus', 'metro', 'tram', 'car', 'walking']
+outlier_col_mapping = {
+    'chauvenet': '_outlier',
+    'mixture': '_mixture',
+    'mixture_model': '_mixture',
+}
 
 class OutlierDetector:
 
@@ -14,11 +19,12 @@ class OutlierDetector:
         self.intermediate_dataset = intermediate_dataset
         self.fitted_data = None
         self.fitted_cols = set()
+        self.fitted_detector = None
 
     @staticmethod
     def select_detector(outlier_type='chauvenet'):
         outlier_type = outlier_type.lower()
-        distribution_based = ['chauvenet', 'mixture_model']
+        distribution_based = ['chauvenet', 'mixture_model', 'mixture',]
         distance_based = ['simple_distance', 'lof',]
 
         if outlier_type in distribution_based:
@@ -28,8 +34,22 @@ class OutlierDetector:
         else:
             raise ValueError(f"Unknown outlier detector type: {outlier_type}")
 
-    def fit_chauvenet(self, chauvenet_params = None, C=2):
-        df = self.intermediate_dataset.copy()
+    def fit_mixture(self, dataframe):
+        df = dataframe
+
+        numeric_cols = df.select_dtypes(include='number').columns
+
+        for col in numeric_cols:
+            if df[col].isna().mean() > 0.5:
+                continue
+
+            df = self.outlier_detector.mixture_model(df, col)
+            self.fitted_cols.add(col)
+
+        self.fitted_data = df
+
+    def fit_chauvenet(self, dataframe, chauvenet_params = None, C=2):
+        df = dataframe
 
         if chauvenet_params is None:
             chauvenet_params = {
@@ -66,29 +86,43 @@ class OutlierDetector:
         # print(df.head())
         # print(f"Saved filtered {vehicle} data to {output_file}")
 
-    def fit(self, outlier_detector = 'chauvenet', outlier_params = None, **kwargs):
+    def fit(self, cols=None, outlier_detector = 'chauvenet', outlier_params = None, **kwargs):
+
+        if cols:
+            df = self.intermediate_dataset[cols].copy()
+        else:
+            df = self.intermediate_dataset.copy()
 
         self.outlier_detector = self.select_detector(outlier_detector)
 
         if outlier_detector == 'chauvenet':
-            self.fit_chauvenet(outlier_params, **kwargs)
+            self.fit_chauvenet(df, outlier_params, **kwargs)
+        elif outlier_detector in ['mixture', 'mixture_model']:
+            self.fit_mixture(df)
         else:
             raise NotImplemented(f"Unknown outlier detector type: {outlier_detector}")
+
+        self.fitted_detector = outlier_detector
 
 
     def transform(self, outlier_behavior = 'nan'):
         df = self.fitted_data.copy()
+        outlier_ext = outlier_col_mapping[self.fitted_detector]
         if outlier_behavior == 'nan':
             for col in self.fitted_cols:
-                df.loc[df[col + '_outlier'] == True, col] = float('nan')
+                df.loc[df[col + outlier_ext] == True, col] = float('nan')
         elif outlier_behavior == 'drop':
             # raise NotImplemented(f"Dropping outliers not yet implemented.")
             pass
         else:
             raise ValueError(f"Unknown outlier behavior: {outlier_behavior}")
 
+        # Drop outlier columns
+        df.drop(columns=[col + outlier_ext for col in self.fitted_cols], inplace=True)
+
         return df
 
-    def fit_transform(self, outlier_detector = 'chauvenet', outlier_params = None, outlier_behaviour='nan', **kwargs):
-        self.fit(outlier_detector, outlier_params, **kwargs)
+    def fit_transform(self, outlier_detector = 'chauvenet', cols=None,
+                      outlier_params = None, outlier_behaviour='nan', **kwargs):
+        self.fit(cols, outlier_detector, outlier_params, **kwargs)
         return self.transform(outlier_behaviour)

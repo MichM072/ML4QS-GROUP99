@@ -21,6 +21,7 @@ class PhyboxDatasetLoader:
         self.exp_dir = exp_dir
         self.vehicles = ['train', 'bus', 'metro', 'tram', 'car', 'scooter', 'bike', 'walking']
         self.dataset_path = self.set_dataset_path(student, exp_dir)
+        self.overwrite_loader = False
 
     @staticmethod
     def set_dataset_path(student, exp_dir):
@@ -120,7 +121,7 @@ class PhyboxDatasetLoader:
 
                     self.simplify_column_names(df)
 
-                    if df.columns.__contains__('unix_timestamp'):
+                    if df.columns.__contains__('unix_timestamp') and not self.overwrite_loader:
                         continue
 
                     if end_times:
@@ -232,6 +233,12 @@ class PhyboxDatasetLoader:
         print('The code has run through successfully!')
         return dataset
 
+    @staticmethod
+    def fix_labels(dataset):
+        label_col = [col for col in dataset.columns if 'label' in col]
+        for col in label_col:
+            dataset[col] = dataset[col].apply(lambda x: 1 if x == 0 or x == 1 else 0)
+
     def create_all_datasets(self, granularities=None, overwrite=True):
         dataset = []
         instance = 0
@@ -248,13 +255,14 @@ class PhyboxDatasetLoader:
                 instance += 1
                 print(f'Done processing {experiment}')
         print("Done creating datasets.")
-        return pd.concat(dataset, ignore_index=True)
-
+        concat_df = pd.concat(dataset, ignore_index=True)
+        self.fix_labels(concat_df)
+        return concat_df
 
 
 def main():
     dataset_loader = PhyboxDatasetLoader('mmr497', exp_dir='ML4QS-Vehicle-2')
-    datasets = dataset_loader.create_all_datasets(overwrite=True)
+    datasets = dataset_loader.create_all_datasets(overwrite=False)
     datasets.to_parquet('./intermediate_datafiles/ML4QS_combined_results_2.parquet', version='2.6', allow_truncated_timestamps=True)
 
 if __name__ == '__main__':

@@ -24,6 +24,8 @@ class CustomImputer:
         if cols is None:
             cols_to_impute = [col for col in dataframe.columns if
                             col not in ['id', 'timestamp'] and 'label' not in col and 'outlier' not in col]
+        else:
+            cols_to_impute = cols
 
         imputed_data = dataframe.copy()
 
