@@ -40,6 +40,9 @@ class Visualiser:
             A str specifying the path where the figures should be saved to. Default is None.
         """
 
+        if path:
+            path = path + '.py'
+            self.data_viz = VisualizeDataset(path)
 
         if plot_type == 'day':
             day_slices = df.groupby(df.index.date)
@@ -77,7 +80,12 @@ class Visualiser:
         else:
             print("Plot type not recognized.")
 
-    def plot_outliers(self, df, cols = None, outlier_type='mixture'):
+    def plot_outliers(self, df, cols = None, outlier_type='mixture', path=None):
+
+        if path:
+            path = path + '.py'
+            self.data_viz = VisualizeDataset(path)
+
         outlier_ext = outlier_col_mapping[outlier_type]
 
         if cols is None:
@@ -88,11 +96,21 @@ class Visualiser:
         if outlier_type == 'mixture' or 'mixture_model':
             for col, outlier_col in cols:
                 self.data_viz.plot_dataset(df,
-                                  [col, col + '_mixture'],
+                                  [col, outlier_col],
                                   ['exact', 'exact'],
                                   ['line', 'points'])
+        elif outlier_type == 'chauvenet':
+            for col, outlier_col in cols:
+                self.data_viz.plot_binary_outliers(
+                    df, col, outlier_col)
+        else:
+            raise NotImplemented(f"Unknown outlier detector type: {outlier_type}")
 
-    def plot_imputation(self, df, df_imputed, imputation_type='None', cols = None):
+    def plot_imputation(self, df, df_imputed, imputation_type='None', cols = None, path=None):
+
+        if path:
+            path = path + '.py'
+            self.data_viz = VisualizeDataset(path)
 
         if imputation_type == 'None':
             imputation_type = 'imputed'

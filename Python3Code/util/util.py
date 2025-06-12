@@ -24,8 +24,9 @@ def read_parquet(path):
     return df
 
 def write_parquet(df, path):
-    df.reset_index(inplace=True)
-    df.rename(columns={'index': 'timestamp'}, inplace=True)
+    if isinstance(df.index, pd.DatetimeIndex):
+        df.reset_index(inplace=True)
+        df.rename(columns={'index': 'timestamp'}, inplace=True)
     df.to_parquet(path, version='2.6', allow_truncated_timestamps=True)
     print('Successfully written to parquet file at ', path, '\n')
 
@@ -35,6 +36,8 @@ def ignore_actual_time(dataset):
     if isinstance(df.index, pd.DatetimeIndex):
         df.reset_index(inplace=True)
         df.rename(columns={'index': 'timestamp'}, inplace=True)
+
+    df['original_time'] = df['timestamp']
 
     def time_gap_cols(group):
         time_series = pd.to_datetime(group['timestamp'])
