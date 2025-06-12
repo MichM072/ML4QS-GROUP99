@@ -124,5 +124,33 @@ class OutlierDetector:
 
     def fit_transform(self, outlier_detector = 'chauvenet', cols=None,
                       outlier_params = None, outlier_behaviour='nan', **kwargs):
+        """
+        Fits the data with specified outlier detection method and parameters, then applies the transformation
+        to replace outliers based on the defined behavior.
+
+        Parameters
+        ----------
+        outlier_detector : str, optional
+            The method to use for outlier detection (default is 'chauvenet').
+
+        cols : list, optional
+            List of column names to apply outlier detection on. If None, all columns are used.
+
+        outlier_params : dict, optional
+            Parameters for the specified outlier detection method. If None, default parameters will be used.
+
+        outlier_behaviour : str, optional
+            Defines how outliers are treated during the transformation. Options include 'nan' (default) or
+            other supported behaviors.
+
+        **kwargs : dict
+            Additional keyword arguments passed to the fit method.
+
+        Returns
+        -------
+        Any
+            Transformed data with outliers handled as per the specified behavior.
+
+        """
         self.fit(cols, outlier_detector, outlier_params, **kwargs)
         return self.transform(outlier_behaviour)
