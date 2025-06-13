@@ -16,12 +16,13 @@ import pandas as pd
 
 class PhyboxDatasetLoader:
 
-    def __init__(self, student, exp_dir = 'ML4QS-Vehicle'):
+    def __init__(self, student, exp_dir = 'ML4QS-Vehicle', overwrite_loader=False):
         self.student = student
         self.exp_dir = exp_dir
         self.vehicles = ['train', 'bus', 'metro', 'tram', 'car', 'scooter', 'bike', 'walking']
         self.dataset_path = self.set_dataset_path(student, exp_dir)
-        self.overwrite_loader = False
+        self.overwrite_loader = overwrite_loader
+        self.impartial_labels = False
 
     @staticmethod
     def set_dataset_path(student, exp_dir):
@@ -47,10 +48,16 @@ class PhyboxDatasetLoader:
 
         df_labels.to_csv(f'{experiment}/labels.csv', index=False)
 
-    @staticmethod
-    def create_labels(start_times, end_times, experiment, exp_types):
+    def create_labels(self, start_times, end_times, experiment, exp_types):
 
-        assert len(start_times) == len(end_times), "Missing end times for labels. Make sure that the number of start times and end times are equal."
+        if len(start_times) != len(end_times):
+            print("Missing end times for labels. Make sure that the number of start times and end times are equal.")
+            print("Applying bandaid fix. ALWAYS PAUSE YOUR EXPERIMENT BEFORE ENDING IT.")
+            self.impartial_labels = True
+            return
+
+
+        # assert len(start_times) == len(end_times), "Missing end times for labels. Make sure that the number of start times and end times are equal."
         assert len(start_times) >= len(exp_types), "There are more types than pauses, the experiment is incomplete."
 
         rows = []
@@ -105,8 +112,14 @@ class PhyboxDatasetLoader:
 
             # print(f'Experiment {experiment.name} has type {exp_type} and start time {start_time}')
 
+            self.impartial_labels = False
+
             if end_times:
                 self.create_labels(start_times, end_times, experiment, exp_type)
+
+            if self.impartial_labels:
+                # Add an infinitely high positive time to the end of the experiment.
+                end_times_exp.append(float(np.inf))
 
             if start_times:
                 print(f'Processing {experiment.name}')
@@ -115,21 +128,28 @@ class PhyboxDatasetLoader:
                 for csv in (x for x in experiment.rglob('*.csv') if 'meta' not in str(x.parent)):
                     df = pd.read_csv(csv, delimiter=',')
 
+                    self.simplify_column_names(df)
+
                     if not df.columns.__contains__('Time'):
                         # Bandaid fix to prevent invalid frames
                         continue
 
-                    self.simplify_column_names(df)
-
                     if df.columns.__contains__('unix_timestamp') and not self.overwrite_loader:
                         continue
 
-                    if end_times:
-                        df['unix_timestamp'] = 0
+                    df['unix_timestamp'] = 0
+
+                    if end_times and not self.impartial_labels:
                         for start_time, exp_time in zip(start_times, end_times_exp):
                             mask = df['Time'] <= exp_time
                             df.loc[mask, 'unix_timestamp'] = (
                                         (df.loc[mask, 'Time'] + start_time) * 1_000_000_000).astype(np.int64)
+                    elif end_times and self.impartial_labels:
+                        for start_time, exp_time in zip(start_times, end_times_exp):
+                            mask = df['Time'] <= exp_time
+                            df.loc[mask, 'unix_timestamp'] = (
+                                    (df.loc[mask, 'Time'] + start_time) * 1_000_000_000).astype(np.int64)
+                        latest_unix_timestamp = max(latest_unix_timestamp, df['unix_timestamp'].max())
                     else:
                         df['unix_timestamp'] = ((df['Time'] + start_times[0]) * 1_000_000_000).astype(np.int64)
                         latest_unix_timestamp = max(latest_unix_timestamp, df['unix_timestamp'].max())
@@ -138,6 +158,10 @@ class PhyboxDatasetLoader:
 
                 if not end_times:
                     self.create_labels_bandaid(start_times[0], latest_unix_timestamp, experiment, exp_type)
+
+                if self.impartial_labels:
+                    end_times.append(latest_unix_timestamp / 1_000_000_000)
+                    self.create_labels(start_times, end_times, experiment, exp_type)
 
 
     def create_dataset(self, experiment_path, granularities=None, overwrite=True):
@@ -221,8 +245,6 @@ class PhyboxDatasetLoader:
         # Make a table like the one shown in the book, comparing the two datasets produced.
         util.print_latex_table_statistics_two_datasets(datasets[0], datasets[1])
 
-        print(dataset.head())
-
         # Finally, store the last dataset we generated (250 ms).
         dataset.reset_index(inplace=True)
         dataset.rename(columns={'index': 'timestamp'}, inplace=True)
@@ -230,7 +252,7 @@ class PhyboxDatasetLoader:
 
         # Lastly, print a statement to know the code went through
 
-        print('The code has run through successfully!')
+        print(f'Dataset: {experiment_name} successfully build!')
         return dataset
 
     @staticmethod
@@ -261,9 +283,9 @@ class PhyboxDatasetLoader:
 
 
 def main():
-    dataset_loader = PhyboxDatasetLoader('mmr497', exp_dir='ML4QS-Vehicle-2')
+    dataset_loader = PhyboxDatasetLoader('mmr497', exp_dir='ML4QS-Vehicle-NT-130625')
     datasets = dataset_loader.create_all_datasets(overwrite=False)
-    datasets.to_parquet('./intermediate_datafiles/ML4QS_combined_results_2.parquet', version='2.6', allow_truncated_timestamps=True)
+    datasets.to_parquet('./intermediate_datafiles/ML4QS_combined_results_130625.parquet', version='2.6', allow_truncated_timestamps=True)
 
 if __name__ == '__main__':
     main()
