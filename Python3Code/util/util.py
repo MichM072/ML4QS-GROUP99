@@ -32,6 +32,7 @@ def write_parquet(df, path):
 
 def ignore_actual_time(dataset):
     df = dataset.copy()
+    time_buffer = pd.Timedelta(0)
 
     if isinstance(df.index, pd.DatetimeIndex):
         df.reset_index(inplace=True)
@@ -45,10 +46,13 @@ def ignore_actual_time(dataset):
         return time_gap_dfs
 
     for instance in df.id.unique():
-        df.loc[df.id == instance, 'time_diff'] = time_gap_cols(df[df.id == instance])
+        mask = df.id == instance
+        df.loc[mask, 'time_diff'] = time_gap_cols(df[mask])
+        first_idx = df[mask].index[0]
+        df.loc[first_idx, 'time_diff'] += time_buffer
+        time_buffer = df.loc[mask, 'time_diff'].max()
 
     df['shifted_time'] = df['time_diff'].cumsum()
-
     start_time = pd.Timestamp('1970-1-1 00:00:00')
 
     df['timestamp'] = df['shifted_time'] + start_time

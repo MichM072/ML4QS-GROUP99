@@ -43,7 +43,12 @@ class OutlierDetector:
             if df[col].isna().mean() > 0.5:
                 continue
 
-            df = self.outlier_detector.mixture_model(df, col)
+            mask = df[col].notna()
+
+            filtered_df = self.outlier_detector.mixture_model(df[mask], col)
+            df[col + '_mixture'] = pd.NA
+            df.loc[filtered_df.index] = filtered_df
+
             self.fitted_cols.add(col)
 
         self.fitted_data = df
@@ -91,7 +96,9 @@ class OutlierDetector:
         if cols:
             df = self.intermediate_dataset[cols].copy()
         else:
-            df = self.intermediate_dataset.copy()
+            invalid_cols = ['label', 'id', 'time', 'outlier', 'mixture']
+            cols = [col for col in self.intermediate_dataset.columns if not any(inv_col in col for inv_col in invalid_cols)]
+            df = self.intermediate_dataset[cols].copy()
 
         self.outlier_detector = self.select_detector(outlier_detector)
 
@@ -120,7 +127,10 @@ class OutlierDetector:
         # Drop outlier columns
         df.drop(columns=[col + outlier_ext for col in self.fitted_cols], inplace=True)
 
-        return df
+        resulting_df = self.intermediate_dataset.copy()
+        resulting_df.update(df)
+
+        return resulting_df
 
     def fit_transform(self, outlier_detector = 'chauvenet', cols=None,
                       outlier_params = None, outlier_behaviour='nan', **kwargs):
