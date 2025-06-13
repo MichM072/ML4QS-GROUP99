@@ -49,6 +49,9 @@ class OutlierDetector:
             df[col + '_mixture'] = pd.NA
             df.loc[filtered_df.index] = filtered_df
 
+            # TODO: Add limiter here
+            # E.g. Top 5 most probable outliers get removed?
+
             self.fitted_cols.add(col)
 
         self.fitted_data = df
