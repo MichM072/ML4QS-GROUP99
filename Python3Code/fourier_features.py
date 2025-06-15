@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import re
 
 ### ---------- CONFIGURATION ----------
-dataset_name = 'raw_data/metro_raw.csv'
-sampling_rate = 5  # Hz
+dataset_name = 'raw_data/bus_raw.csv'
+sampling_rate = 20  # Hz
 min_samples_per_recording = 10
 fft_length = 256  # Force all FFTs to same size
 
@@ -35,15 +35,44 @@ def compute_fft_features(signal, sampling_rate=1, fft_length=256):
     signal = signal.dropna().values
     n = len(signal)
     if n == 0:
-        return pd.Series(dtype=float)  # empty fallback
+        return pd.Series(dtype=float)
+
+    # Pad or truncate signal
     if n < fft_length:
         signal = np.pad(signal, (0, fft_length - n))
     else:
         signal = signal[:fft_length]
 
+    # FFT
     freqs = np.fft.rfftfreq(fft_length, d=1 / sampling_rate)
-    fft_vals = np.abs(np.fft.rfft(signal))
-    return pd.Series(fft_vals, index=[f"freq_{round(f, 3)}_Hz" for f in freqs])
+    fft_result = np.fft.rfft(signal)
+
+    # Raw amplitudes
+    real_ampl = np.abs(fft_result)
+
+    # max_freq
+    max_freq = freqs[np.argmax(real_ampl)]
+    
+    # freq_weighted
+    freq_weighted = float(np.sum(freqs * real_ampl)) / np.sum(real_ampl)
+
+    # Power Spectral Density and PSE
+    PSD = np.square(real_ampl) / len(real_ampl)
+    PSD_pdf = PSD / np.sum(PSD)
+    pse = -np.sum(np.log(PSD_pdf) * PSD_pdf) if np.all(PSD_pdf > 0) else 0
+
+    # Combine all features
+    feature_dict = {
+        'max_freq': max_freq,
+        'freq_weighted': freq_weighted,
+        'pse': pse
+    }
+
+    # Append FFT amplitude spectrum
+    spectrum_features = {f"freq_{round(f, 3)}_Hz": a for f, a in zip(freqs, real_ampl)}
+    feature_dict.update(spectrum_features)
+
+    return pd.Series(feature_dict)
 
 ### ---------- VISUALIZATION ----------
 
@@ -96,9 +125,9 @@ fft_feature_rows = []
 recordings_used = []
 
 for recording_id, group in grouped:
-    print(f"▶️ Processing recording {recording_id} with {len(group)} rows")
+    print(f" Processing recording {recording_id} with {len(group)} rows")
     if len(group) < min_samples_per_recording:
-        print(f"⏭️ Skipping recording {recording_id} (too short)")
+        print(f" Skipping recording {recording_id} (too short)")
         continue
 
     numeric_cols = group.select_dtypes(include='number').columns.drop('recording_number')
