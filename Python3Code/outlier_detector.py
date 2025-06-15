@@ -34,9 +34,8 @@ class OutlierDetector:
         else:
             raise ValueError(f"Unknown outlier detector type: {outlier_type}")
 
-    def fit_mixture(self, dataframe):
-        df = dataframe
-
+    def fit_mixture(self, dataframe, outlier_threshold=0.05):
+        df = dataframe.copy()
         numeric_cols = df.select_dtypes(include='number').columns
 
         for col in numeric_cols:
@@ -44,13 +43,14 @@ class OutlierDetector:
                 continue
 
             mask = df[col].notna()
-
             filtered_df = self.outlier_detector.mixture_model(df[mask], col)
-            df[col + '_mixture'] = pd.NA
-            df.loc[filtered_df.index] = filtered_df
 
-            # TODO: Add limiter here
-            # E.g. Top 5 most probable outliers get removed?
+            df[col + '_mixture'] = pd.NA
+            df.loc[filtered_df.index, col + '_mixture'] = filtered_df[col + '_mixture']
+
+            if outlier_threshold is not None:
+                outlier_mask = filtered_df[col + '_mixture'] < outlier_threshold
+                df.loc[outlier_mask.index[outlier_mask], col] = pd.NA
 
             self.fitted_cols.add(col)
 
