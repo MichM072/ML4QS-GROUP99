@@ -116,7 +116,8 @@ class Visualiser:
             imputation_type = 'imputed'
 
         if cols is None:
-            invalid_cols = ['label', 'id', 'time', outlier_col_mapping.values()]
+            invalid_cols = ['label', 'id', 'time']
+            invalid_cols.extend(list(outlier_col_mapping.values()))
             cols = [col for col in df.columns if not any (inv_col in col for inv_col in invalid_cols)]
 
         for col in cols:
