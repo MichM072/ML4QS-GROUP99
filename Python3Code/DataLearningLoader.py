@@ -62,12 +62,10 @@ class DataLearningLoader:
         # FIND ALL LABEL COLUMNS AUTOMATICALLY
         # -------------------------------
         # Find all label columns (assuming they start with 'label')
-        print(f"Checking label cols")
         label_columns = [col for col in df.columns if col.startswith('label')]
         self.logger.info(f"\nFound label columns: {label_columns}")
 
         # Extract transportation modes from label column names
-        print("finding transportation modes from label columns:")
         transportation_modes = [col.replace('label', '') for col in label_columns]
         self.logger.info(f"Transportation modes: {transportation_modes}")
 
@@ -79,10 +77,7 @@ class DataLearningLoader:
                     return transportation_modes[i]
             return 'unknown'
 
-        print("doing the apply")
         df['transport_mode'] = df.apply(create_target_label, axis=1)
-
-        print("finished the apply")
 
         # Show all available transport modes and their counts
         self.logger.info(f"\nAll transport modes found in data:")
