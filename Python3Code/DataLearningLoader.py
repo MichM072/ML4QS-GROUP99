@@ -298,7 +298,13 @@ class DataLearningLoader:
         # Check for missing values
         self.logger.info(f"\nData quality check:")
         self.logger.info(f"Missing values in train features: {X_train.isnull().sum().sum()}")
-        self.logger.info(f"Infinite values in train features: {np.isinf(X_train.select_dtypes(include=[np.number])).sum().sum()}")
+        numeric_cols = X_train.select_dtypes(include=['number'], exclude=['timedelta64[ns]']).columns
+
+        if len(numeric_cols) > 0:
+            # Convert to float just to prevent error, stupid fix!
+            numeric_data = X_train[numeric_cols]
+            inf_values = np.isinf(numeric_data).sum().sum()
+            self.logger.info(f"Infinite values in train features: {inf_values}")
 
         # Final cleanup of any remaining object columns
         object_cols = X_train.select_dtypes(include=['object']).columns
