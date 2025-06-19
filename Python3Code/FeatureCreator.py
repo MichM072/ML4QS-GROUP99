@@ -244,9 +244,16 @@ class FeatureCreatorUpdated:
             sessions.append(g)
         return pd.concat(sessions)
 
-    def create_features(self, dataset, overwrite=False):
+    def create_features(self, dataset, name=None, overwrite=False):
 
-        parquet_path = os.path.join(self.output_dir, 'combined_features.parquet')
+        if name is None:
+            name_parquet = 'combined_features.parquet'
+            name_csv = 'combined_features.csv'
+        else:
+            name_parquet = f"{name}_combined_features.parquet"
+            name_csv = f"{name}_combined_features.csv"
+
+        parquet_path = os.path.join(self.output_dir, name_parquet)
 
         if os.path.exists(parquet_path) and not overwrite:
             print(f"Combined features already exist at {parquet_path}")
@@ -313,7 +320,7 @@ class FeatureCreatorUpdated:
 
         # Save unified features
         # This CSV now contains all FFT-based and rolling temporal features per session (id)
-        combined_path = os.path.join(self.output_dir, 'combined_features.csv')
+        combined_path = os.path.join(self.output_dir, name_csv)
         merged.to_csv(combined_path)
         print(f"Combined features saved to {combined_path}")
         write_parquet(merged, parquet_path)

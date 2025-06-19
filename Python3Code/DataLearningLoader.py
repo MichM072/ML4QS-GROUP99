@@ -192,12 +192,129 @@ class DataLearningLoader:
         non_numeric_cols.extend(problematic_cols)
         non_numeric_cols = list(set(non_numeric_cols))
 
+        # Ensure no label columns remain in the final data
+        label_cols = [col for col in df.columns if col.startswith('label')]
+        if label_cols:
+            df.drop(columns=label_cols, axis=1, inplace=True)
+
         if non_numeric_cols:
             self.logger.info(f"Found non-numeric columns that will be excluded: {non_numeric_cols}")
             feature_cols = [col for col in self.feature_cols if col not in non_numeric_cols]
             self.logger.info(f"Updated feature count: {len(feature_cols)}")
 
+    def simple_split_data(self, df):
+        # -------------------------------
+        # IMPROVED SESSION-LEVEL SPLIT FOR ALL CLASSES
+        # -------------------------------
 
+        # First create label col
+        self.create_labels(df)
+
+        self.logger.info("\n" + "=" * 50)
+        self.logger.info("IMPLEMENTING SESSION-LEVEL SPLIT FOR ALL TRANSPORT MODES")
+        self.logger.info("=" * 50)
+
+        # Get unique session IDs for each transport mode
+        session_split_info = {}
+        all_train_sessions = []
+        all_test_sessions = []
+
+        np.random.seed(42)
+
+
+        for mode in df['transport_mode'].unique():
+            mode_sessions = df[df['transport_mode'] == mode]['id'].unique()
+            mode_sessions_shuffled = np.random.permutation(mode_sessions)
+
+            n_sessions = len(mode_sessions_shuffled)
+
+            # Handle cases with very few sessions
+            if n_sessions == 1:
+                # If only 1 session, put it in training
+                train_sessions = mode_sessions_shuffled
+                test_sessions = []
+                print(f"{mode}: Only 1 session - putting in training set")
+            elif n_sessions == 2:
+                # If only 2 sessions, put 1 in each
+                train_sessions = mode_sessions_shuffled[:1]
+                test_sessions = mode_sessions_shuffled[1:]
+                print(f"{mode}: Only 2 sessions - 1 train, 1 test")
+            else:
+                # Normal 80/20 split
+                split_idx = max(1, int(0.8 * n_sessions))  # Ensure at least 1 in training
+                train_sessions = mode_sessions_shuffled[:split_idx]
+                test_sessions = mode_sessions_shuffled[split_idx:]
+
+            session_split_info[mode] = {
+                'total': n_sessions,
+                'train': len(train_sessions),
+                'test': len(test_sessions)
+            }
+
+            all_train_sessions.extend(train_sessions)
+            all_test_sessions.extend(test_sessions)
+
+        self.logger.info(f"\nSession split breakdown:")
+        for mode, info in session_split_info.items():
+            self.logger.info(f"  {mode}: {info['total']} total -> {info['train']} train, {info['test']} test")
+
+        self.logger.info(f"\nTotal sessions:")
+        self.logger.info(f"  Train: {len(all_train_sessions)}")
+        self.logger.info(f"  Test: {len(all_test_sessions)}")
+
+        # Create train and test datasets
+        df_train = df[df['id'].isin(all_train_sessions)].copy()
+        df_test = df[df['id'].isin(all_test_sessions)].copy()
+
+        # Verify no session overlap
+        train_session_set = set(df_train['id'].unique())
+        test_session_set = set(df_test['id'].unique())
+        session_overlap = train_session_set.intersection(test_session_set)
+
+        self.logger.info(f"\n🔍 VERIFICATION:")
+        self.logger.info(f"Train sessions: {len(train_session_set)}")
+        self.logger.info(f"Test sessions: {len(test_session_set)}")
+        self.logger.info(f"Session overlap: {len(session_overlap)}")
+
+        if len(session_overlap) == 0:
+            self.logger.info("No session overlap between train and test!")
+        else:
+            self.logger.info("Session overlap detected!")
+
+
+        # Prepare features and targets
+        X_train = df_train
+        X_test = df_test
+        y_train = df_train['transport_mode']
+        y_test = df_test['transport_mode']
+
+        self.logger.info(f"\nFinal dataset sizes:")
+        self.logger.info(f"Train samples: {X_train.shape[0]}")
+        self.logger.info(f"Test samples: {X_test.shape[0]}")
+        self.logger.info(f"Train class distribution:\n{y_train.value_counts()}")
+        self.logger.info(f"Test class distribution:\n{y_test.value_counts()}")
+
+        # Check for missing values
+        self.logger.info(f"\nData quality check:")
+        self.logger.info(f"Missing values in train features: {X_train.isnull().sum().sum()}")
+        numeric_cols = X_train.select_dtypes(include=['number'], exclude=['timedelta64[ns]']).columns
+
+        if len(numeric_cols) > 0:
+            # Convert to float just to prevent error, stupid fix!
+            numeric_data = X_train[numeric_cols]
+            inf_values = np.isinf(numeric_data).sum().sum()
+            self.logger.info(f"Infinite values in train features: {inf_values}")
+
+        # Final cleanup of any remaining object columns
+        object_cols = X_train.select_dtypes(include=['object']).columns
+        if len(object_cols) > 0:
+            self.logger.info(f"Removing remaining object columns: {list(object_cols)}")
+            X_train = X_train.select_dtypes(exclude=['object'])
+            X_test = X_test.select_dtypes(exclude=['object'])
+
+        self.logger.info(f"Final feature matrix shape: Train {X_train.shape}, Test {X_test.shape}")
+
+        return X_train, X_test, y_train, y_test
 
     def split_data(self, df):
 
@@ -312,8 +429,18 @@ class DataLearningLoader:
 
         return X_train, X_test, y_train, y_test
 
+    def prepare_split_data(self, dataset):
+        df = dataset.copy()
+        print(f"Cleaning data...")
+        self.clean_data(df)
+        print(f"Cleaning features...")
+        self.clean_features(df)
+        return df
 
+
+    @DeprecationWarning
     def prepare_data(self, dataset):
+        self.logger.warning("Deprecated method. Use 'prepare_split_data' instead.")
         df = dataset.copy()
         print(f"Cleaning data...")
         self.clean_data(df)
