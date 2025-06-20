@@ -25,8 +25,9 @@ def read_parquet(path):
 
 def write_parquet(df, path):
     if isinstance(df.index, pd.DatetimeIndex):
-        df.reset_index(inplace=True)
-        df.rename(columns={'index': 'timestamp'}, inplace=True)
+        # No longer inplace to prevent issues with Series object.
+        df = df.reset_index()
+        df = df.rename(columns={'index': 'timestamp'})
     df.to_parquet(path, version='2.6', allow_truncated_timestamps=True)
     print('Successfully written to parquet file at ', path, '\n')
 

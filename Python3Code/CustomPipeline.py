@@ -60,7 +60,7 @@ class PreConfiguredPipeline:
         for col, type in original_types.items():
             df[col] = df[col].astype(type)
 
-    def fit_transform(self, intermediate_df, verbose=False, overwrite=False):
+    def fit_transform(self, intermediate_df, verbose=False, overwrite=False, pipe_name=None):
         if verbose:
             self.logger.setLevel(logging.INFO)
 
@@ -77,6 +77,10 @@ class PreConfiguredPipeline:
         for X in X_sets:
             X_name = X[1]
             X = X[0]
+
+            if pipe_name is not None:
+                X_name = f"{pipe_name}_{X_name}"
+
             self.logger.info(f"Preprocessing {X_name}...")
             self.logger.info(f"Checking for outliers...")
             original_types = X.dtypes
