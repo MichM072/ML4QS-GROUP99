@@ -60,7 +60,7 @@ class PreConfiguredPipeline:
         for col, type in original_types.items():
             df[col] = df[col].astype(type)
 
-    def fit_transform(self, intermediate_df, verbose=False, overwrite=False, pipe_name=None):
+    def fit_transform(self, intermediate_df, verbose=False, overwrite=False, pipe_name=None, srtkfold=True):
         if verbose:
             self.logger.setLevel(logging.INFO)
 
@@ -68,9 +68,20 @@ class PreConfiguredPipeline:
         df = ignore_actual_time(df)
         self.logger.info("Removing bad sensors...")
         self.remove_bad_sensors(df)
-        self.logger.info("Splitting data into train and test sets...")
-        X_train, X_test, y_train, y_test = self.data_loader.simple_split_data(df)
-        X_sets = [(X_train, "X_train"), (X_test, "X_test")]
+        splitting_method = "stratified" if srtkfold else "80/20"
+        self.logger.info(f"Splitting data into train and test sets using {splitting_method} split")
+
+        if srtkfold:
+            split_sets = self.data_loader.stratgrkfold_split(df, 3)
+            X_sets = []
+            fold = 1
+            for X_train, X_test, _, _ in split_sets:
+                X_sets.extend([(X_train, f"X_train_{fold}"), (X_test, f"X_test_{fold}")])
+                fold += 1
+        else:
+            X_train, X_test, y_train, y_test = self.data_loader.simple_split_data(df)
+            X_sets = [(X_train, "X_train"), (X_test, "X_test")]
+
         X_sets_configured = []
 
         self.logger.info("Starting preprocessing pipeline...")
@@ -80,6 +91,7 @@ class PreConfiguredPipeline:
 
             if pipe_name is not None:
                 X_name = f"{pipe_name}_{X_name}"
+
 
             self.logger.info(f"Preprocessing {X_name}...")
             self.logger.info(f"Checking for outliers...")
@@ -98,6 +110,16 @@ class PreConfiguredPipeline:
             X_sets_configured.append(X)
             self.logger.info(f"Preprocessing {X_name} complete!")
 
-        X_train, X_test = X_sets_configured
 
-        return X_train, X_test, y_train, y_test
+        if srtkfold:
+            result_sets = []
+            i,j = [0,2]
+            for _, _, y_train, y_test in split_sets:
+                x_train, x_test = X_sets_configured[i:j]
+                result_sets.append([x_train, x_test, y_train, y_test])
+                i += 2
+                j += 2
+            return result_sets
+        else:
+            X_train, X_test = X_sets_configured[0:2]
+            return X_train, X_test, y_train, y_test

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import logging
+from sklearn.model_selection import StratifiedGroupKFold
 
 class DataLearningLoader:
     def __init__(self, df_path, output_dir, verbose=False):
@@ -201,6 +202,91 @@ class DataLearningLoader:
             self.logger.info(f"Found non-numeric columns that will be excluded: {non_numeric_cols}")
             feature_cols = [col for col in self.feature_cols if col not in non_numeric_cols]
             self.logger.info(f"Updated feature count: {len(feature_cols)}")
+
+
+    def stratgrkfold_split(self, df, splits=3):
+        # -------------------------------
+        # IMPROVED SESSION-LEVEL SPLIT FOR ALL CLASSES
+        # -------------------------------
+
+        # First create label col
+        self.create_labels(df)
+
+        self.logger.info("\n" + "=" * 50)
+        self.logger.info("IMPLEMENTING SESSION-LEVEL SPLIT FOR ALL TRANSPORT MODES")
+        self.logger.info("=" * 50)
+
+        np.random.seed(42)
+
+        # Stratified group k-fold
+
+        splitter = StratifiedGroupKFold(n_splits=splits, shuffle=True, random_state=42)
+
+        X = df.drop(columns=['transport_mode'])
+        y = df['transport_mode']
+
+        split_list = []
+
+        i = 1
+
+        for train_idx, test_idx in splitter.split(X, y, groups=df['id']):
+            self.logger.info(f"\nFold split {i}:")
+            i += 1
+            X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+            y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+
+            self.logger.info(f"\nSession split breakdown:")
+            for labels in [y_train, y_test]:
+                self.logger.info(f"  Train: \n{labels.value_counts()}")
+                self.logger.info(f"  Test: \n{labels.value_counts()}")
+
+            self.logger.info(f"\nTotal sessions:")
+            self.logger.info(f"  Train: {len(X_train)}")
+            self.logger.info(f"  Test: {len(X_test)}")
+
+            # Verify no session overlap
+            train_session_set = set(X_train['id'].unique())
+            test_session_set = set(X_test['id'].unique())
+            session_overlap = train_session_set.intersection(test_session_set)
+
+            self.logger.info(f"\n🔍 VERIFICATION:")
+            self.logger.info(f"Train sessions: {len(train_session_set)}")
+            self.logger.info(f"Test sessions: {len(test_session_set)}")
+            self.logger.info(f"Session overlap: {len(session_overlap)}")
+
+            if len(session_overlap) == 0:
+                self.logger.info("No session overlap between train and test!")
+            else:
+                self.logger.info("Session overlap detected!")
+
+            self.logger.info(f"\nFinal dataset sizes:")
+            self.logger.info(f"Train samples: {X_train.shape[0]}")
+            self.logger.info(f"Test samples: {X_test.shape[0]}")
+            self.logger.info(f"Train class distribution:\n{y_train.value_counts()}")
+            self.logger.info(f"Test class distribution:\n{y_test.value_counts()}")
+
+            # Check for missing values
+            self.logger.info(f"\nData quality check:")
+            self.logger.info(f"Missing values in train features: {X_train.isnull().sum().sum()}")
+            numeric_cols = X_train.select_dtypes(include=['number'], exclude=['timedelta64[ns]']).columns
+
+            if len(numeric_cols) > 0:
+                # Convert to float just to prevent error, stupid fix!
+                numeric_data = X_train[numeric_cols]
+                inf_values = np.isinf(numeric_data).sum().sum()
+                self.logger.info(f"Infinite values in train features: {inf_values}")
+
+            # Final cleanup of any remaining object columns
+            object_cols = X_train.select_dtypes(include=['object']).columns
+            if len(object_cols) > 0:
+                self.logger.info(f"Removing remaining object columns: {list(object_cols)}")
+                X_train = X_train.select_dtypes(exclude=['object'])
+                X_test = X_test.select_dtypes(exclude=['object'])
+
+            self.logger.info(f"Final feature matrix shape: Train {X_train.shape}, Test {X_test.shape}")
+            split_list.append((X_train, X_test, y_train, y_test))
+
+        return split_list
 
     def simple_split_data(self, df):
         # -------------------------------
