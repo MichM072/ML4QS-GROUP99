@@ -93,6 +93,8 @@ class PhyboxDatasetLoader:
 
     def load_phybox_data(self):
 
+        broken_sets = []
+
         for experiment in self.dataset_path.iterdir():
             start_times = []
             end_times_exp = []
@@ -101,6 +103,11 @@ class PhyboxDatasetLoader:
                 continue
             exp_type = self.check_experiment_name(experiment.name)
             time_csv = experiment / 'meta' / 'time.csv'
+            if not os.path.exists(time_csv):
+                print(f'Missing time.csv file in {experiment.name}. Skipping this experiment.')
+                broken_sets.append(experiment.name)
+                continue
+
             with open(time_csv, 'r') as f:
                 for line in f.readlines():
                     if 'START' in line:
@@ -162,6 +169,8 @@ class PhyboxDatasetLoader:
                 if self.impartial_labels:
                     end_times.append(latest_unix_timestamp / 1_000_000_000)
                     self.create_labels(start_times, end_times, experiment, exp_type)
+
+        print(f'Broken sets: {broken_sets}')
 
 
     def create_dataset(self, experiment_path, granularities=None, overwrite=True):
@@ -236,14 +245,14 @@ class PhyboxDatasetLoader:
             #                      ['line', 'line', 'line', 'line', 'line', 'line', 'points'])
 
             # And print a summary of the dataset.
-            util.print_statistics(dataset)
+            # util.print_statistics(dataset)
             datasets.append(copy.deepcopy(dataset))
 
             # If needed, we could save the various versions of the dataset we create in the loop with logical filenames:
             # dataset.to_csv(RESULT_PATH / f'chapter2_result_{milliseconds_per_instance}')
 
         # Make a table like the one shown in the book, comparing the two datasets produced.
-        util.print_latex_table_statistics_two_datasets(datasets[0], datasets[1])
+        # util.print_latex_table_statistics_two_datasets(datasets[0], datasets[1])
 
         # Finally, store the last dataset we generated (250 ms).
         dataset.reset_index(inplace=True)
