@@ -1,4 +1,4 @@
-from FeatureCreator import FeatureCreatorUpdated
+from FeatureCreator import FeatureCreatorUpdated, FeatureCreatorNF
 from outlier_detector import OutlierDetector
 from custom_imputer import CustomImputer
 from DataLearningLoader import DataLearningLoader
@@ -8,17 +8,21 @@ import logging
 class CustomPipeline:
     def __init__(self, imputer=CustomImputer(), intermediate_path=None):
         self.imputer = imputer
+        print("THIS CLASS WILL NEVER BE USED, RAN OUT OF TIME SORRY!")
 
     def add_component(self, component_name, component):
         ...
 
 
 class PreConfiguredPipeline:
-    def __init__(self, intermediate_path=None, verbose=False):
+    def __init__(self, intermediate_path=None, verbose=False, include_fourier=True):
         self.outlier_detector = None
         self.imputer = None
         self.data_loader = DataLearningLoader(df_path=intermediate_path, output_dir=intermediate_path, verbose=False)
-        self.feature_creator = FeatureCreatorUpdated(intermediate_path)
+        if include_fourier:
+            self.feature_creator = FeatureCreatorUpdated(intermediate_path)
+        else:
+            self.feature_creator = FeatureCreatorNF(intermediate_path)
         self.logger = logging.getLogger(__name__)
         handler = logging.StreamHandler()
         formatter = logging.Formatter('[%(levelname)s] %(message)s')
@@ -49,7 +53,7 @@ class PreConfiguredPipeline:
         return self.feature_creator.create_features(df, name=name, overwrite=overwrite)
 
     def clean_data(self, df):
-        self.data_loader.clean_data(df)
+        return self.data_loader.prepare_split_data(df)
 
     @staticmethod
     def ensure_correct_types(df, original_types):
@@ -77,20 +81,18 @@ class PreConfiguredPipeline:
             self.logger.info(f"Checking for outliers...")
             original_types = X.dtypes
             X = self.detect_outliers(X)
-            print(type(X))
             self.logger.info(f"Ensuring correct data types...")
             self.ensure_correct_types(X, original_types)
             self.logger.info(f"Imputing missing values...")
             X = self.impute(X)
             self.logger.info(f"Creating features...")
             X = self.feature_creation(X, X_name, overwrite=overwrite)
-            print(type(X))
+            self.logger.info(f"Dropping any direction data!")
+            X.drop(columns=X.columns[X.columns.str.contains('direction', case=False)], inplace=True)
             self.logger.info(f"Cleaning data...")
-            self.clean_data(X)
-            print(type(X))
+            X = self.clean_data(X)
             X_sets_configured.append(X)
             self.logger.info(f"Preprocessing {X_name} complete!")
-            print(type(X))
 
         X_train, X_test = X_sets_configured
 

@@ -9,11 +9,10 @@ from util.util import write_parquet, read_parquet
 
 warnings.filterwarnings('ignore')
 
-@DeprecationWarning
-class FeatureCreator:
+class FeatureCreatorNF:
     def __init__(self, path):
         self.intermediate_path = path
-        print("WARNING, USE THE NEW FEATURE CREATOR! FEATURECREATORUPDATED")
+        print("WARNING THIS FEATURE CREATOR USE NO FOURIER FEATURES")
 
     @staticmethod
     def calculate_magnitude(df, prefix):
@@ -96,13 +95,29 @@ class FeatureCreator:
         result_df = pd.concat(processed_sessions, ignore_index=True)
         return result_df
 
-    def create_features(self, df):
+    def create_features(self, df, name=None, overwrite=False):
+
+        if name is None:
+            name = "combined_features"
+
+
+        parquet_path = os.path.join(self.intermediate_path, f'{name}.parquet')
+
+        if os.path.exists(parquet_path) and not overwrite:
+            print(f"Combined features already exist at {parquet_path}")
+            df = read_parquet(parquet_path)
+            print(f"Loaded combined features from {parquet_path}")
+            print("If this was not intended, rerun create_features with overwrite=True")
+            return df
+
         df = df.copy()
         # Process the data
         session_features = self.process_transportation_data(df, window_size=120)
 
         # Save the result
-        write_parquet(session_features, self.intermediate_path / 'session_features_imputed.parquet')
+        write_parquet(session_features, self.intermediate_path / f'{name}.parquet')
+
+        return session_features
 
 class FeatureCreatorUpdated:
     def __init__(self, path):

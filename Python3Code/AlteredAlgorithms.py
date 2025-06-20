@@ -116,3 +116,21 @@ class AlteredAlgorithmsClassifier:
                 print(rf.feature_importances_[ordered_indices[i]])
 
         return pred_training_y, pred_test_y, frame_prob_training_y, frame_prob_test_y
+
+    def naive_bayes(self, train_X, train_y, test_X):
+        # Create the model
+        nb = GaussianNB()
+
+        train_y = train_y.values.ravel()
+        # Fit the model
+        nb.fit(train_X, train_y)
+
+        # Apply the model
+        pred_prob_training_y = nb.predict_proba(train_X)
+        pred_prob_test_y = nb.predict_proba(test_X)
+        pred_training_y = nb.predict(train_X)
+        pred_test_y = nb.predict(test_X)
+        frame_prob_training_y = pd.DataFrame(pred_prob_training_y, columns=nb.classes_)
+        frame_prob_test_y = pd.DataFrame(pred_prob_test_y, columns=nb.classes_)
+
+        return pred_training_y, pred_test_y, frame_prob_training_y, frame_prob_test_y

@@ -10,6 +10,7 @@ class CustomImputer:
 
     def fallback_imputer(self, instance, dataset, col):
         # Very simple imputer, using bootstrapping to fill in random values of seen values in the same vehicle type
+        # TODO: Perhaps a different backup strategy?
         instance_data = dataset.loc[instance]
         label_cols = [col for col in instance_data.columns if col.startswith('label')]
         vehicle_type = [col for col in label_cols if (instance_data[col] == 1).any()][0]
@@ -17,7 +18,7 @@ class CustomImputer:
 
         observed_values = vehicle_df[col].dropna().values
         if observed_values.size == 0:
-            print(f"No observed values for {col} for vehicle type {vehicle_type[0]} in instance {instance}.")
+            print(f"No observed values for {col} for vehicle type {vehicle_type}.")
             return instance_data[col]
 
         instance_data[col] = instance_data[col].apply(lambda x: np.random.choice(observed_values) if pd.isna(x) else x)
