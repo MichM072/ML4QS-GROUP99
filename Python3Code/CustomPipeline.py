@@ -68,6 +68,8 @@ class PreConfiguredPipeline:
         df = ignore_actual_time(df)
         self.logger.info("Removing bad sensors...")
         self.remove_bad_sensors(df)
+        self.logger.info("Removing any data related to the Tram...")
+        df = df[df['labeltram'] != 1]
         splitting_method = "stratified" if srtkfold else "80/20"
         self.logger.info(f"Splitting data into train and test sets using {splitting_method} split")
 
