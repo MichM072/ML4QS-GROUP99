@@ -48,6 +48,9 @@ class OutlierDetector:
             df[col + '_mixture'] = pd.NA
             df.loc[filtered_df.index, col + '_mixture'] = filtered_df[col + '_mixture']
 
+            # Re-enable this if you want quantiles
+            # outlier_threshold = filtered_df[col + '_mixture'].quantile(outlier_threshold)
+
             if outlier_threshold is not None:
                 outlier_mask = filtered_df[col + '_mixture'] < outlier_threshold
                 df.loc[outlier_mask.index[outlier_mask], col] = pd.NA
